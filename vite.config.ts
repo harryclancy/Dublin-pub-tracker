@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/dublin-pub-tracker/',
+  base: '/Dublin-pub-tracker/',
   plugins: [
     react(),
     tailwindcss(),
@@ -20,8 +20,8 @@ export default defineConfig({
         background_color: '#faf7f2',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/dublin-pub-tracker/',
-        scope: '/dublin-pub-tracker/',
+        start_url: '/Dublin-pub-tracker/',
+        scope: '/Dublin-pub-tracker/',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },

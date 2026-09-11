@@ -4,7 +4,7 @@ A private checklist, map, and pint journal for Harry & Ava to work their way thr
 
 No login, no backend, no API keys — everything runs client-side and is stored on-device.
 
-**Live:** https://harryclancy.github.io/dublin-pub-tracker/ (deploys automatically on every push to `main` via GitHub Actions — see `.github/workflows/deploy.yml`).
+**Live:** https://harryclancy.github.io/Dublin-pub-tracker/ (deploys automatically on every push to `main` via GitHub Actions — see `.github/workflows/deploy.yml`).
 
 ## Stack
 

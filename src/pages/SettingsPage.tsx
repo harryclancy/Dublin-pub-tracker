@@ -96,6 +96,7 @@ export function SettingsPage() {
             <li>• Locations are real; addresses, phone numbers and photos are often missing — use "Edit Pub Details" on any pub to fill them in.</li>
             <li>• Areas and postal districts are estimated from coordinates and may need correcting for pubs near a boundary.</li>
             <li>• We never claim a pub is open or closed without confirming it — check Google Maps if you're heading out.</li>
+            <li>• Missing a pub? Tap "Add Pub" on the All Pubs screen or the + button on the map to add it yourself.</li>
           </ul>
         </section>
 
@@ -117,8 +118,9 @@ export function SettingsPage() {
         description={
           summary && (
             <span>
-              This file contains {summary.visitedPubs} visited pubs, {summary.visits} visits, {summary.drinks} drinks,{' '}
-              {summary.photos} photos and {summary.crawls} crawls. Importing will <strong>replace</strong> everything
+              This file contains {summary.visitedPubs} visited pubs, {summary.customPubs} pubs you added, {summary.visits}{' '}
+              visits, {summary.drinks} drinks, {summary.photos} photos and {summary.crawls} crawls. Importing will{' '}
+              <strong>replace</strong> everything
               currently on this device. This can't be undone — export your current data first if you're unsure.
             </span>
           )

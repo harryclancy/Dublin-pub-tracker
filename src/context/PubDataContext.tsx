@@ -6,7 +6,7 @@ import type { Pub, PubWithComputed, Review } from '../types';
 import { combineRatings } from '../lib/rating';
 import { haversineKm } from '../lib/geo';
 
-const STATIC_PUBS = rawPubs as Pub[];
+const SEED_PUBS = rawPubs as Pub[];
 
 type LocationStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'unavailable';
 
@@ -70,8 +70,16 @@ export function PubDataProvider({ children }: { children: ReactNode }) {
   const reviews = useLiveQuery(() => db.reviews.toArray(), [], []);
   const edits = useLiveQuery(() => db.edits.toArray(), [], []);
   const visits = useLiveQuery(() => db.visits.toArray(), [], []);
+  const customPubs = useLiveQuery(() => db.customPubs.toArray(), [], []);
 
-  const loading = statuses === undefined || reviews === undefined || edits === undefined || visits === undefined;
+  const loading =
+    statuses === undefined ||
+    reviews === undefined ||
+    edits === undefined ||
+    visits === undefined ||
+    customPubs === undefined;
+
+  const allPubs = useMemo(() => [...SEED_PUBS, ...(customPubs ?? [])], [customPubs]);
 
   const visitCounts = useMemo(() => {
     const map = new Map<string, number>();
@@ -87,7 +95,7 @@ export function PubDataProvider({ children }: { children: ReactNode }) {
     const reviewMap = new Map<string, Review>();
     for (const r of reviews ?? []) reviewMap.set(`${r.pubId}:${r.person}`, r);
 
-    return STATIC_PUBS.map((pub) => {
+    return allPubs.map((pub) => {
       const status = statusMap.get(pub.id) ?? {
         pubId: pub.id,
         visited: false,
@@ -117,7 +125,7 @@ export function PubDataProvider({ children }: { children: ReactNode }) {
         displayImage: edit?.imageOverride || pub.image,
       };
     });
-  }, [statuses, edits, reviews, userLocation, visitCounts]);
+  }, [allPubs, statuses, edits, reviews, userLocation, visitCounts]);
 
   const pubsById = useMemo(() => new Map(pubs.map((p) => [p.id, p])), [pubs]);
 

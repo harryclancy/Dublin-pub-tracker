@@ -1,8 +1,8 @@
 import { db } from '../db/database';
 import { blobToDataUrl, dataUrlToBlob } from './photos';
-import type { AppSettings, Drink, DrinkPhoto, PubCrawl, PubEdit, PubStatus, Review, Visit } from '../types';
+import type { AppSettings, Drink, DrinkPhoto, Pub, PubCrawl, PubEdit, PubStatus, Review, Visit } from '../types';
 
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 
 interface SerializedPhoto {
   id: string;
@@ -25,11 +25,12 @@ export interface BackupFile {
     edits: PubEdit[];
     crawls: PubCrawl[];
     settings: AppSettings[];
+    customPubs?: Pub[]; // added in v2 — optional so v1 backups still import cleanly
   };
 }
 
 export async function exportBackup(): Promise<Blob> {
-  const [statuses, reviews, visits, drinks, photos, edits, crawls, settings] = await Promise.all([
+  const [statuses, reviews, visits, drinks, photos, edits, crawls, settings, customPubs] = await Promise.all([
     db.statuses.toArray(),
     db.reviews.toArray(),
     db.visits.toArray(),
@@ -38,6 +39,7 @@ export async function exportBackup(): Promise<Blob> {
     db.edits.toArray(),
     db.crawls.toArray(),
     db.settings.toArray(),
+    db.customPubs.toArray(),
   ]);
 
   const serializedPhotos: SerializedPhoto[] = await Promise.all(
@@ -54,7 +56,7 @@ export async function exportBackup(): Promise<Blob> {
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     app: 'dublin-pub-tracker',
-    data: { statuses, reviews, visits, drinks, photos: serializedPhotos, edits, crawls, settings },
+    data: { statuses, reviews, visits, drinks, photos: serializedPhotos, edits, crawls, settings, customPubs },
   };
 
   return new Blob([JSON.stringify(backup)], { type: 'application/json' });
@@ -79,6 +81,7 @@ export interface BackupSummary {
   reviews: number;
   crawls: number;
   visitedPubs: number;
+  customPubs: number;
 }
 
 export function summarizeBackup(backup: BackupFile): BackupSummary {
@@ -89,6 +92,7 @@ export function summarizeBackup(backup: BackupFile): BackupSummary {
     reviews: backup.data.reviews.length,
     crawls: backup.data.crawls.length,
     visitedPubs: backup.data.statuses.filter((s) => s.visited).length,
+    customPubs: backup.data.customPubs?.length ?? 0,
   };
 }
 
@@ -116,7 +120,7 @@ export async function importBackup(backup: BackupFile): Promise<void> {
 
   await db.transaction(
     'rw',
-    [db.statuses, db.reviews, db.visits, db.drinks, db.photos, db.edits, db.crawls, db.settings],
+    [db.statuses, db.reviews, db.visits, db.drinks, db.photos, db.edits, db.crawls, db.settings, db.customPubs],
     async () => {
       await Promise.all([
         db.statuses.clear(),
@@ -127,6 +131,7 @@ export async function importBackup(backup: BackupFile): Promise<void> {
         db.edits.clear(),
         db.crawls.clear(),
         db.settings.clear(),
+        db.customPubs.clear(),
       ]);
       await Promise.all([
         db.statuses.bulkPut(backup.data.statuses),
@@ -137,6 +142,7 @@ export async function importBackup(backup: BackupFile): Promise<void> {
         db.edits.bulkPut(backup.data.edits),
         db.crawls.bulkPut(backup.data.crawls),
         db.settings.bulkPut(backup.data.settings),
+        db.customPubs.bulkPut(backup.data.customPubs ?? []),
       ]);
     }
   );

@@ -3,6 +3,7 @@ import type {
   AppSettings,
   Drink,
   DrinkPhoto,
+  Pub,
   PubCrawl,
   PubEdit,
   PubStatus,
@@ -25,6 +26,7 @@ export class PubTrackerDB extends Dexie {
   edits!: Table<PubEdit, string>;
   crawls!: Table<PubCrawl, string>;
   settings!: Table<AppSettings, string>;
+  customPubs!: Table<Pub, string>;
 
   constructor() {
     super('dublin-pub-tracker');
@@ -37,6 +39,11 @@ export class PubTrackerDB extends Dexie {
       edits: 'pubId',
       crawls: 'id, updatedAt',
       settings: 'id',
+    });
+    // v2: user-added pubs (for real pubs missing from the seed dataset), kept
+    // in their own table so they merge cleanly with the read-only static list.
+    this.version(2).stores({
+      customPubs: 'id, area, district',
     });
   }
 }

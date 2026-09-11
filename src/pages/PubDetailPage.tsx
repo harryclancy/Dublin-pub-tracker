@@ -31,7 +31,8 @@ import { VisitTimeline } from '../components/pub/VisitTimeline';
 import { EditPubSheet } from '../components/pub/EditPubSheet';
 import { ComparePubSheet } from '../components/pub/ComparePubSheet';
 import { EmptyState } from '../components/ui/EmptyState';
-import { setVisited, toggleFavourite, toggleWantToVisit } from '../db/actions';
+import { deleteCustomPub, setVisited, toggleFavourite, toggleWantToVisit } from '../db/actions';
+import { Trash2 } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 import { RatingStars } from '../components/ui/RatingStars';
 import { formatRating } from '../lib/rating';
@@ -48,6 +49,7 @@ export function PubDetailPage() {
   const [addVisitOpen, setAddVisitOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [confirmDeletePub, setConfirmDeletePub] = useState(false);
   const [confirmUnvisit, setConfirmUnvisit] = useState(false);
 
   if (!pub) {
@@ -94,7 +96,12 @@ export function PubDetailPage() {
           />
         </div>
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-          <StatusBadge visited={pub.status.visited} />
+          <div className="flex items-center gap-1.5">
+            <StatusBadge visited={pub.status.visited} />
+            {pub.source === 'user-added' && (
+              <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold backdrop-blur">Added by you</span>
+            )}
+          </div>
           <h1 className="mt-1.5 font-display text-2xl font-bold drop-shadow-sm sm:text-3xl">{pub.displayName}</h1>
           <p className="mt-0.5 text-sm text-white/85">
             {pub.displayArea} · {pub.district}
@@ -182,6 +189,15 @@ export function PubDetailPage() {
             />
           )}
         </div>
+
+        {pub.source === 'user-added' && (
+          <button
+            onClick={() => setConfirmDeletePub(true)}
+            className="flex w-full items-center justify-center gap-2 py-2 text-sm font-semibold text-red-600"
+          >
+            <Trash2 size={15} /> Remove This Pub
+          </button>
+        )}
       </div>
 
       <AddVisitSheet open={addVisitOpen} onClose={() => setAddVisitOpen(false)} pubId={pub.id} />
@@ -198,6 +214,21 @@ export function PubDetailPage() {
           await setVisited(pub.id, false);
           setConfirmUnvisit(false);
           toast.show('Marked as not visited');
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmDeletePub}
+        title={`Remove ${pub.displayName}?`}
+        description="This deletes the pub you added, along with any visits, ratings, reviews and photos logged against it. This cannot be undone."
+        confirmLabel="Remove pub"
+        destructive
+        onCancel={() => setConfirmDeletePub(false)}
+        onConfirm={async () => {
+          await deleteCustomPub(pub.id);
+          setConfirmDeletePub(false);
+          toast.show('Pub removed');
+          navigate('/pubs');
         }}
       />
     </div>

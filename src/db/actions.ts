@@ -1,7 +1,9 @@
 import { db, emptyStatus } from './database';
 import { newId } from '../lib/id';
 import { compressForStorage, makeThumbnail } from '../lib/photos';
-import type { Person, PersonOrBoth, PubEdit, PubStatus, Review, Visit } from '../types';
+import { nearestArea } from '../lib/areas';
+import { pubDirectionsUrl, pubGoogleMapsUrl } from '../lib/googleMaps';
+import type { Person, PersonOrBoth, Pub, PubEdit, PubStatus, Review, Visit } from '../types';
 
 export async function getStatus(pubId: string): Promise<PubStatus> {
   const existing = await db.statuses.get(pubId);
@@ -177,4 +179,58 @@ export async function renameCrawl(id: string, name: string): Promise<void> {
 
 export async function deleteCrawl(id: string): Promise<void> {
   await db.crawls.delete(id);
+}
+
+export interface NewCustomPubInput {
+  name: string;
+  lat: number;
+  lon: number;
+  area?: string;
+  address?: string | null;
+  phone?: string | null;
+  website?: string | null;
+}
+
+/** Adds a real pub the seed dataset is missing. Stored separately from the
+ * read-only static list so it survives dataset refreshes, but behaves
+ * identically everywhere else (map, filters, reviews, visits, crawls). */
+export async function addCustomPub(input: NewCustomPubInput): Promise<Pub> {
+  const suggested = nearestArea(input.lat, input.lon);
+  const pub: Pub = {
+    id: `custom-${newId()}`,
+    name: input.name.trim(),
+    lat: input.lat,
+    lon: input.lon,
+    area: input.area?.trim() || suggested.name,
+    district: suggested.district,
+    region: suggested.region,
+    address: input.address?.trim() || null,
+    phone: input.phone?.trim() || null,
+    website: input.website?.trim() || null,
+    openingHours: null,
+    tags: ['pub'],
+    image: null,
+    source: 'user-added',
+    googleMapsUrl: pubGoogleMapsUrl(input.name.trim(), input.lat, input.lon),
+    directionsUrl: pubDirectionsUrl(input.lat, input.lon),
+    createdAt: new Date().toISOString(),
+  };
+  await db.customPubs.put(pub);
+  return pub;
+}
+
+/** Removes a user-added pub entirely, along with any visits/drinks/photos,
+ * reviews, status and edits recorded against it. Only ever offered for pubs
+ * with source "user-added" — the seed dataset's real pubs aren't deletable. */
+export async function deleteCustomPub(pubId: string): Promise<void> {
+  const visits = await db.visits.where('pubId').equals(pubId).toArray();
+  for (const visit of visits) {
+    await deleteVisit(visit.id);
+  }
+  await Promise.all([
+    db.customPubs.delete(pubId),
+    db.statuses.delete(pubId),
+    db.edits.delete(pubId),
+    db.reviews.where('pubId').equals(pubId).delete(),
+  ]);
 }

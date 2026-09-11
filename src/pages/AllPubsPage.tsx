@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { LayoutGrid, List, MapPin } from 'lucide-react';
+import { LayoutGrid, List, MapPin, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usePubData } from '../context/PubDataContext';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -7,6 +7,7 @@ import { SearchBar } from '../components/pub/SearchBar';
 import { FilterSheet } from '../components/pub/FilterSheet';
 import { PubCard } from '../components/pub/PubCard';
 import { PubListRow } from '../components/pub/PubListRow';
+import { AddPubSheet } from '../components/pub/AddPubSheet';
 import { EmptyState } from '../components/ui/EmptyState';
 import { DEFAULT_FILTERS, applyFilters, countActiveFilters, type PubFilters } from '../lib/filters';
 import { Beer } from 'lucide-react';
@@ -22,6 +23,7 @@ export function AllPubsPage() {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [sort, setSort] = useState<SortKey>('name');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [addPubOpen, setAddPubOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const result = applyFilters(pubs, filters);
@@ -38,7 +40,18 @@ export function AllPubsPage() {
 
   return (
     <div>
-      <PageHeader title="All Pubs" subtitle={`${pubs.length} pubs across Dublin`} />
+      <PageHeader
+        title="All Pubs"
+        subtitle={`${pubs.length} pubs across Dublin`}
+        action={
+          <button
+            onClick={() => setAddPubOpen(true)}
+            className="flex items-center gap-1.5 rounded-full bg-brand-800 px-3.5 py-2 text-xs font-bold text-white active:scale-95"
+          >
+            <Plus size={14} /> Add Pub
+          </button>
+        }
+      />
       <div className="space-y-4 px-4 pb-6 pt-4 sm:px-6">
         <SearchBar
           value={filters.search}
@@ -121,6 +134,7 @@ export function AllPubsPage() {
       </div>
 
       <FilterSheet open={filterOpen} onClose={() => setFilterOpen(false)} filters={filters} onChange={setFilters} />
+      <AddPubSheet open={addPubOpen} onClose={() => setAddPubOpen(false)} />
     </div>
   );
 }

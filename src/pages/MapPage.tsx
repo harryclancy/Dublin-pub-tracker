@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
-import { LocateFixed } from 'lucide-react';
+import { LocateFixed, Plus } from 'lucide-react';
 import { usePubData } from '../context/PubDataContext';
 import { ClusterLayer } from '../components/map/ClusterLayer';
 import { MapLegend } from '../components/map/MapLegend';
@@ -9,6 +9,7 @@ import { userLocationIcon } from '../components/map/markerIcons';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { SearchBar } from '../components/pub/SearchBar';
 import { FilterSheet } from '../components/pub/FilterSheet';
+import { AddPubSheet } from '../components/pub/AddPubSheet';
 import { DEFAULT_FILTERS, applyFilters, countActiveFilters, type PubFilters } from '../lib/filters';
 import type { PubWithComputed } from '../types';
 
@@ -32,11 +33,28 @@ function LocateButton() {
   );
 }
 
+function AddPubButton({ onClick }: { onClick: (lat: number, lon: number) => void }) {
+  const map = useMap();
+  return (
+    <button
+      onClick={() => {
+        const center = map.getCenter();
+        onClick(center.lat, center.lng);
+      }}
+      aria-label="Add a pub here"
+      className="absolute bottom-24 right-3 z-[400] flex h-12 w-12 items-center justify-center rounded-full bg-brand-800 text-white shadow-pop active:scale-90 lg:bottom-6"
+    >
+      <Plus size={22} strokeWidth={2.5} />
+    </button>
+  );
+}
+
 export function MapPage() {
   const { pubs, userLocation } = usePubData();
   const [filters, setFilters] = useState<PubFilters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedPub, setSelectedPub] = useState<PubWithComputed | null>(null);
+  const [addPubLocation, setAddPubLocation] = useState<{ lat: number; lon: number } | null>(null);
 
   const filtered = useMemo(() => applyFilters(pubs, filters), [pubs, filters]);
 
@@ -65,6 +83,7 @@ export function MapPage() {
         <ClusterLayer pubs={filtered} onMarkerClick={setSelectedPub} />
         {userLocation && <Marker position={[userLocation.lat, userLocation.lon]} icon={userLocationIcon} />}
         <LocateButton />
+        <AddPubButton onClick={(lat, lon) => setAddPubLocation({ lat, lon })} />
       </MapContainer>
 
       <MapLegend />
@@ -74,6 +93,15 @@ export function MapPage() {
       <BottomSheet open={!!selectedPub} onClose={() => setSelectedPub(null)} maxHeight="80vh">
         {selectedPub && <PubPreviewCard pub={selectedPub} onClose={() => setSelectedPub(null)} />}
       </BottomSheet>
+
+      {addPubLocation && (
+        <AddPubSheet
+          open={!!addPubLocation}
+          onClose={() => setAddPubLocation(null)}
+          initialLat={addPubLocation.lat}
+          initialLon={addPubLocation.lon}
+        />
+      )}
     </div>
   );
 }

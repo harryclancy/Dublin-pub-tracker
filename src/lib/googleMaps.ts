@@ -1,5 +1,16 @@
 import type { LatLon } from './geo';
 
+/** A search link biased to the venue's coordinates — resolves reliably to the
+ * correct place without a Places API key. Mirrors scripts/build-pubs.mjs. */
+export function pubGoogleMapsUrl(name: string, lat: number, lon: number): string {
+  const q = encodeURIComponent(`${name} pub, ${lat},${lon}`);
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+
+export function pubDirectionsUrl(lat: number, lon: number): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=walking`;
+}
+
 /** A pub-to-pub directions link (used by the two-pub compare tool and crawls). */
 export function directionsBetween(from: LatLon, to: LatLon, mode: 'walking' | 'driving' = 'walking'): string {
   return `https://www.google.com/maps/dir/?api=1&origin=${from.lat},${from.lon}&destination=${to.lat},${to.lon}&travelmode=${mode}`;

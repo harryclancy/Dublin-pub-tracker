@@ -3,7 +3,7 @@ import { BottomSheet } from '../ui/BottomSheet';
 import { upsertPubEdit } from '../../db/actions';
 import { useToast } from '../ui/Toast';
 import type { PubWithComputed } from '../../types';
-import { blobToDataUrl } from '../../lib/photos';
+import { CoverPhotoPicker } from './CoverPhotoPicker';
 
 interface EditPubSheetProps {
   open: boolean;
@@ -22,11 +22,6 @@ export function EditPubSheet({ open, onClose, pub }: EditPubSheetProps) {
   const [saving, setSaving] = useState(false);
   const toast = useToast();
 
-  async function handleImage(file: File) {
-    const dataUrl = await blobToDataUrl(file);
-    setImagePreview(dataUrl);
-  }
-
   async function handleSave() {
     setSaving(true);
     await upsertPubEdit(pub.id, {
@@ -36,7 +31,7 @@ export function EditPubSheet({ open, onClose, pub }: EditPubSheetProps) {
       website: website.trim() || undefined,
       phone: phone.trim() || undefined,
       notes: notes.trim() || undefined,
-      imageOverride: imagePreview !== pub.image ? imagePreview ?? undefined : undefined,
+      imageOverride: imagePreview ?? undefined,
     });
     setSaving(false);
     toast.show('Pub details updated');
@@ -75,19 +70,8 @@ export function EditPubSheet({ open, onClose, pub }: EditPubSheetProps) {
         <Field label="Phone">
           <input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 w-full rounded-xl border border-line bg-white px-3 text-sm" />
         </Field>
-        <Field label="Exterior photo">
-          <div className="flex items-center gap-3">
-            {imagePreview && <img src={imagePreview} alt="" className="h-16 w-16 rounded-xl object-cover" />}
-            <label className="cursor-pointer rounded-full border border-line bg-white px-4 py-2 text-xs font-semibold text-ink">
-              Choose photo
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleImage(e.target.files[0])}
-              />
-            </label>
-          </div>
+        <Field label="Cover photo">
+          <CoverPhotoPicker value={imagePreview} onChange={setImagePreview} pubName={pub.displayName} />
         </Field>
         <Field label="Notes">
           <textarea

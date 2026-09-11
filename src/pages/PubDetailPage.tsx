@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import {
+  Camera,
   Check,
   ChevronLeft,
   ExternalLink,
@@ -31,12 +32,13 @@ import { VisitTimeline } from '../components/pub/VisitTimeline';
 import { EditPubSheet } from '../components/pub/EditPubSheet';
 import { ComparePubSheet } from '../components/pub/ComparePubSheet';
 import { EmptyState } from '../components/ui/EmptyState';
-import { deleteCustomPub, setVisited, toggleFavourite, toggleWantToVisit } from '../db/actions';
+import { deleteCustomPub, setVisited, toggleFavourite, toggleWantToVisit, upsertPubEdit } from '../db/actions';
 import { Trash2 } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 import { RatingStars } from '../components/ui/RatingStars';
 import { formatRating } from '../lib/rating';
 import { format, parseISO } from 'date-fns';
+import { compressForStorage, blobToDataUrl } from '../lib/photos';
 
 export function PubDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +53,8 @@ export function PubDetailPage() {
   const [compareOpen, setCompareOpen] = useState(false);
   const [confirmDeletePub, setConfirmDeletePub] = useState(false);
   const [confirmUnvisit, setConfirmUnvisit] = useState(false);
+  const [coverPhotoBusy, setCoverPhotoBusy] = useState(false);
+  const coverPhotoInputRef = useRef<HTMLInputElement>(null);
 
   if (!pub) {
     return (
@@ -69,6 +73,19 @@ export function PubDetailPage() {
     } else {
       await setVisited(pub.id, true);
       toast.show(`${pub.displayName} marked visited!`);
+    }
+  }
+
+  async function handleCoverPhoto(file: File) {
+    if (!pub) return;
+    setCoverPhotoBusy(true);
+    try {
+      const compressed = await compressForStorage(file);
+      const dataUrl = await blobToDataUrl(compressed);
+      await upsertPubEdit(pub.id, { imageOverride: dataUrl });
+      toast.show('Cover photo updated');
+    } finally {
+      setCoverPhotoBusy(false);
     }
   }
 
@@ -95,7 +112,27 @@ export function PubDetailPage() {
             activeColor="var(--color-want)"
           />
         </div>
+        <input
+          ref={coverPhotoInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleCoverPhoto(file);
+            e.target.value = '';
+          }}
+        />
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+          <button
+            onClick={() => coverPhotoInputRef.current?.click()}
+            disabled={coverPhotoBusy}
+            aria-label={pub.displayImage ? 'Change cover photo' : 'Add cover photo'}
+            className="mb-2 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-ink shadow-card active:scale-95 disabled:opacity-60"
+          >
+            <Camera size={13} />
+            {coverPhotoBusy ? 'Processing…' : pub.displayImage ? 'Change photo' : 'Add cover photo'}
+          </button>
           <div className="flex items-center gap-1.5">
             <StatusBadge visited={pub.status.visited} />
             {pub.source === 'user-added' && (

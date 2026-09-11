@@ -1,10 +1,11 @@
 import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BottomSheet } from '../ui/BottomSheet';
-import { addCustomPub } from '../../db/actions';
+import { addCustomPub, upsertPubEdit } from '../../db/actions';
 import { nearestArea } from '../../lib/areas';
 import { useToast } from '../ui/Toast';
 import { usePubData } from '../../context/PubDataContext';
+import { CoverPhotoPicker } from './CoverPhotoPicker';
 
 // Leaflet + react-leaflet are sizeable — only fetched once someone actually
 // opens this sheet, instead of bloating every page's initial bundle.
@@ -31,6 +32,7 @@ export function AddPubSheet({ open, onClose, initialLat, initialLon }: AddPubShe
   const [address, setAddress] = useState('');
   const [website, setWebsite] = useState('');
   const [phone, setPhone] = useState('');
+  const [photo, setPhoto] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
@@ -45,6 +47,7 @@ export function AddPubSheet({ open, onClose, initialLat, initialLon }: AddPubShe
     setAddress('');
     setWebsite('');
     setPhone('');
+    setPhoto(null);
   }
 
   async function handleSave() {
@@ -59,6 +62,9 @@ export function AddPubSheet({ open, onClose, initialLat, initialLon }: AddPubShe
       website: website || undefined,
       phone: phone || undefined,
     });
+    if (photo) {
+      await upsertPubEdit(pub.id, { imageOverride: photo });
+    }
     setSaving(false);
     toast.show(`${pub.name} added`);
     reset();
@@ -113,6 +119,10 @@ export function AddPubSheet({ open, onClose, initialLat, initialLon }: AddPubShe
             onChange={(e) => setAddress(e.target.value)}
             className="h-11 w-full rounded-xl border border-line bg-white px-3 text-sm focus:border-brand-600 focus:outline-none"
           />
+        </Field>
+
+        <Field label="Cover photo (optional)">
+          <CoverPhotoPicker value={photo} onChange={setPhoto} pubName={name || 'New pub'} />
         </Field>
 
         <div className="grid grid-cols-2 gap-3">

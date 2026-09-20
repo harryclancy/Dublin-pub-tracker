@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import rawPubs from '../data/pubs.json';
 import type { Pub, PubWithComputed, Review } from '../types';
-import { combineRatings } from '../lib/rating';
+import { combinedOverallRating, personOverallRating } from '../lib/rating';
 import { haversineKm } from '../lib/geo';
 
 const SEED_PUBS = rawPubs as Pub[];
@@ -89,6 +89,26 @@ export function PubDataProvider({ children }: { children: ReactNode }) {
     return map;
   }, [visits]);
 
+  const lastVisitDates = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const v of visits ?? []) {
+      const current = map.get(v.pubId);
+      if (!current || v.date > current) map.set(v.pubId, v.date);
+    }
+    return map;
+  }, [visits]);
+
+  const visitedByMap = useMemo(() => {
+    const map = new Map<string, { harry: boolean; ava: boolean }>();
+    for (const v of visits ?? []) {
+      const entry = map.get(v.pubId) ?? { harry: false, ava: false };
+      if (v.who === 'harry' || v.who === 'both') entry.harry = true;
+      if (v.who === 'ava' || v.who === 'both') entry.ava = true;
+      map.set(v.pubId, entry);
+    }
+    return map;
+  }, [visits]);
+
   const pubs = useMemo<PubWithComputed[]>(() => {
     const statusMap = new Map((statuses ?? []).map((s) => [s.pubId, s]));
     const editMap = new Map((edits ?? []).map((e) => [e.pubId, e]));
@@ -109,6 +129,7 @@ export function PubDataProvider({ children }: { children: ReactNode }) {
       const harryReview = reviewMap.get(`${pub.id}:harry`) ?? null;
       const avaReview = reviewMap.get(`${pub.id}:ava`) ?? null;
       const distanceKm = userLocation ? haversineKm(userLocation, { lat: pub.lat, lon: pub.lon }) : null;
+      const visitedBy = visitedByMap.get(pub.id);
 
       return {
         ...pub,
@@ -116,8 +137,13 @@ export function PubDataProvider({ children }: { children: ReactNode }) {
         edit,
         harryReview,
         avaReview,
-        combinedRating: combineRatings(harryReview?.rating, avaReview?.rating),
+        harryOverall: personOverallRating(harryReview),
+        avaOverall: personOverallRating(avaReview),
+        combinedRating: combinedOverallRating(harryReview, avaReview),
         visitCount: visitCounts.get(pub.id) ?? 0,
+        lastVisitDate: lastVisitDates.get(pub.id) ?? null,
+        visitedByHarry: visitedBy?.harry ?? false,
+        visitedByAva: visitedBy?.ava ?? false,
         distanceKm,
         displayName: edit?.name || pub.name,
         displayArea: edit?.area || pub.area,
@@ -125,7 +151,7 @@ export function PubDataProvider({ children }: { children: ReactNode }) {
         displayImage: edit?.imageOverride || pub.image,
       };
     });
-  }, [allPubs, statuses, edits, reviews, userLocation, visitCounts]);
+  }, [allPubs, statuses, edits, reviews, userLocation, visitCounts, lastVisitDates, visitedByMap]);
 
   const pubsById = useMemo(() => new Map(pubs.map((p) => [p.id, p])), [pubs]);
 

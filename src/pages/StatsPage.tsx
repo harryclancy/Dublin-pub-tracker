@@ -20,12 +20,12 @@ export function StatsPage() {
     const visitedCount = visitedPubs.length;
     const pct = total ? (visitedCount / total) * 100 : 0;
 
-    const harryRatings = pubs.filter((p) => p.harryReview?.rating != null).map((p) => p.harryReview!.rating!);
-    const avaRatings = pubs.filter((p) => p.avaReview?.rating != null).map((p) => p.avaReview!.rating!);
+    const harryRatings = pubs.filter((p) => p.harryOverall != null).map((p) => p.harryOverall!);
+    const avaRatings = pubs.filter((p) => p.avaOverall != null).map((p) => p.avaOverall!);
     const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
 
-    const harryFav = [...pubs].filter((p) => p.harryReview?.rating != null).sort((a, b) => b.harryReview!.rating! - a.harryReview!.rating!)[0];
-    const avaFav = [...pubs].filter((p) => p.avaReview?.rating != null).sort((a, b) => b.avaReview!.rating! - a.avaReview!.rating!)[0];
+    const harryFav = [...pubs].filter((p) => p.harryOverall != null).sort((a, b) => b.harryOverall! - a.harryOverall!)[0];
+    const avaFav = [...pubs].filter((p) => p.avaOverall != null).sort((a, b) => b.avaOverall! - a.avaOverall!)[0];
 
     const rated = pubs.filter((p) => p.combinedRating != null);
     const highest = [...rated].sort((a, b) => b.combinedRating! - a.combinedRating!)[0] ?? null;
@@ -96,7 +96,7 @@ export function StatsPage() {
             <StatTile label="Reviews written" value={stats.harryReviewCount} />
           </div>
           {stats.harryFav && (
-            <FavPubRow label="Harry's favourite" pub={stats.harryFav.displayName} rating={stats.harryFav.harryReview?.rating ?? null} id={stats.harryFav.id} />
+            <FavPubRow label="Harry's favourite" pub={stats.harryFav.displayName} rating={stats.harryFav.harryOverall} id={stats.harryFav.id} />
           )}
         </section>
 
@@ -107,7 +107,7 @@ export function StatsPage() {
             <StatTile label="Reviews written" value={stats.avaReviewCount} />
           </div>
           {stats.avaFav && (
-            <FavPubRow label="Ava's favourite" pub={stats.avaFav.displayName} rating={stats.avaFav.avaReview?.rating ?? null} id={stats.avaFav.id} />
+            <FavPubRow label="Ava's favourite" pub={stats.avaFav.displayName} rating={stats.avaFav.avaOverall} id={stats.avaFav.id} />
           )}
         </section>
 

@@ -51,8 +51,8 @@ export function PubCard({ pub, compact = false }: { pub: PubWithComputed; compac
         {!compact && (
           <div className="mt-2 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              <RatingChip label="H" value={pub.harryReview?.rating ?? null} />
-              <RatingChip label="A" value={pub.avaReview?.rating ?? null} />
+              <RatingChip label="H" value={pub.harryOverall} />
+              <RatingChip label="A" value={pub.avaOverall} />
             </div>
             {pub.combinedRating != null && (
               <span className="rounded-full bg-brand-50 px-2 py-0.5 font-semibold text-brand-800">

@@ -3,6 +3,7 @@ import type {
   AppSettings,
   Drink,
   DrinkPhoto,
+  GuestReview,
   Pub,
   PubCrawl,
   PubEdit,
@@ -27,6 +28,7 @@ export class PubTrackerDB extends Dexie {
   crawls!: Table<PubCrawl, string>;
   settings!: Table<AppSettings, string>;
   customPubs!: Table<Pub, string>;
+  guestReviews!: Table<GuestReview, string>;
 
   constructor() {
     super('dublin-pub-tracker');
@@ -44,6 +46,14 @@ export class PubTrackerDB extends Dexie {
     // in their own table so they merge cleanly with the read-only static list.
     this.version(2).stores({
       customPubs: 'id, area, district',
+    });
+    // v3: six-category ratings live as plain extra fields on existing `reviews`
+    // rows (no index/schema change needed, so existing rows are untouched) plus
+    // one new table for the optional third "guest" review — kept entirely
+    // separate from `reviews` so it can never collide with or overwrite
+    // Harry's or Ava's data.
+    this.version(3).stores({
+      guestReviews: 'pubId',
     });
   }
 }

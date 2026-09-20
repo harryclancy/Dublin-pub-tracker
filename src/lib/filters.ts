@@ -65,8 +65,8 @@ export function applyFilters(pubs: PubWithComputed[], f: PubFilters): PubWithCom
     if (f.visited === 'unvisited' && p.status.visited) return false;
     if (f.favourites && !(p.status.favouriteHarry || p.status.favouriteAva)) return false;
     if (f.wantToVisit && !p.status.wantToVisit) return false;
-    if (f.harryRated && p.harryReview?.rating == null) return false;
-    if (f.avaRated && p.avaReview?.rating == null) return false;
+    if (f.harryRated && p.harryOverall == null) return false;
+    if (f.avaRated && p.avaOverall == null) return false;
     if (f.minRating > 0 && (p.combinedRating ?? 0) < f.minRating) return false;
     if (f.area && p.displayArea !== f.area) return false;
     if (f.district && p.district !== f.district) return false;

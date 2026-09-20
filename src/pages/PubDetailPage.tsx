@@ -26,6 +26,7 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { IconToggle } from '../components/ui/IconToggle';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { ReviewCard } from '../components/pub/ReviewCard';
+import { GuestReviewSection } from '../components/pub/GuestReviewSection';
 import { PubMiniMap } from '../components/pub/PubMiniMap';
 import { AddVisitSheet } from '../components/pub/AddVisitSheet';
 import { VisitTimeline } from '../components/pub/VisitTimeline';
@@ -197,11 +198,25 @@ export function PubDetailPage() {
             <ReviewCard pubId={pub.id} person="ava" review={pub.avaReview} />
           </div>
           {pub.combinedRating != null && (
-            <div className="mt-3 flex items-center justify-between rounded-card bg-brand-50 p-3.5">
-              <span className="text-sm font-semibold text-brand-900">Combined Rating</span>
-              <span className="flex items-center gap-1.5 font-bold text-brand-800">
-                <RatingStars value={pub.combinedRating} size={16} /> {formatRating(pub.combinedRating)}
-              </span>
+            <div className="mt-3 rounded-card bg-brand-50 p-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-brand-900">Combined Rating</span>
+                <span className="flex items-center gap-1.5 font-bold text-brand-800">
+                  <RatingStars value={pub.combinedRating} size={16} /> {formatRating(pub.combinedRating)}
+                </span>
+              </div>
+              {(pub.harryOverall != null || pub.avaOverall != null) && (
+                <div className="mt-2 flex items-center gap-4 text-xs font-medium text-brand-900/70">
+                  <span>Harry {formatRating(pub.harryOverall)}</span>
+                  <span>Ava {formatRating(pub.avaOverall)}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {pub.status.visited && (
+            <div className="mt-3">
+              <GuestReviewSection pubId={pub.id} />
             </div>
           )}
         </div>

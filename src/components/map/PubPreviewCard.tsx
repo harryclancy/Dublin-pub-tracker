@@ -48,8 +48,8 @@ export function PubPreviewCard({ pub, onClose }: { pub: PubWithComputed; onClose
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-paper-dim p-2.5">
-          <RatingRow label="Harry" value={pub.harryReview?.rating ?? null} />
-          <RatingRow label="Ava" value={pub.avaReview?.rating ?? null} />
+          <RatingRow label="Harry" value={pub.harryOverall} />
+          <RatingRow label="Ava" value={pub.avaOverall} />
         </div>
         {pub.combinedRating != null && (
           <div className="mt-2 flex items-center justify-between text-sm">

@@ -67,11 +67,44 @@ export interface Visit {
   createdAt: string;
 }
 
+/** The six categories Harry, Ava (and an optional guest) rate a pub on. */
+export type RatingCategoryKey =
+  | 'comfort'
+  | 'drinks'
+  | 'facilities'
+  | 'atmosphere'
+  | 'service'
+  | 'personalExperience';
+
+export type CategoryRatings = Partial<Record<RatingCategoryKey, number>>;
+export type CategoryNotes = Partial<Record<RatingCategoryKey, string>>;
+
 export interface Review {
   pubId: string;
   person: Person;
+  /** Legacy single overall rating, from before category ratings existed.
+   * Never overwritten by the category system — kept as a fallback so pubs
+   * rated before this feature still show a sensible overall/combined score
+   * until someone rates their categories directly. */
   rating: number | null; // 0-5, half-star steps
+  /** General written review (unrelated to any one category). */
   comment: string | null;
+  /** Per-category 0-5 half-star ratings. Optional/absent on older reviews —
+   * absence (not 0) means "not yet rated" and is excluded from averages. */
+  categories?: CategoryRatings | null;
+  /** Optional per-category free-text notes, collapsed by default in the UI. */
+  categoryNotes?: CategoryNotes | null;
+  updatedAt: string;
+}
+
+/** A single optional third review for a pub visited with someone else.
+ * Deliberately separate from Review (not a "person") so it can never be
+ * confused with, or accidentally affect, Harry's or Ava's data. */
+export interface GuestReview {
+  pubId: string;
+  guestName: string | null;
+  categories: CategoryRatings;
+  categoryNotes: CategoryNotes;
   updatedAt: string;
 }
 
@@ -109,8 +142,18 @@ export interface PubWithComputed extends Pub {
   edit: PubEdit | null;
   harryReview: Review | null;
   avaReview: Review | null;
+  /** Harry's/Ava's own overall — category average when they've rated any
+   * categories, else falling back to their legacy single rating. */
+  harryOverall: number | null;
+  avaOverall: number | null;
+  /** Average of every completed Harry+Ava category rating (or, for pubs
+   * rated before categories existed, their legacy ratings). Never includes
+   * a guest review. */
   combinedRating: number | null;
   visitCount: number;
+  lastVisitDate: string | null;
+  visitedByHarry: boolean;
+  visitedByAva: boolean;
   distanceKm: number | null;
   displayName: string;
   displayArea: string;

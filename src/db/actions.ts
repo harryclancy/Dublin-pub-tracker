@@ -3,7 +3,19 @@ import { newId } from '../lib/id';
 import { compressForStorage, makeThumbnail } from '../lib/photos';
 import { nearestArea } from '../lib/areas';
 import { pubDirectionsUrl, pubGoogleMapsUrl } from '../lib/googleMaps';
-import type { Person, PersonOrBoth, Pub, PubEdit, PubStatus, Review, Visit } from '../types';
+import type {
+  CategoryNotes,
+  CategoryRatings,
+  GuestReview,
+  Person,
+  PersonOrBoth,
+  Pub,
+  PubEdit,
+  PubStatus,
+  RatingCategoryKey,
+  Review,
+  Visit,
+} from '../types';
 
 export async function getStatus(pubId: string): Promise<PubStatus> {
   const existing = await db.statuses.get(pubId);
@@ -40,9 +52,97 @@ export async function toggleWantToVisit(pubId: string): Promise<void> {
   await db.statuses.put({ ...status, wantToVisit: !status.wantToVisit, updatedAt: new Date().toISOString() });
 }
 
+/** Merge-safe write for a Harry/Ava review — always reads the existing row
+ * first so saving one field (e.g. the general comment) never wipes out
+ * another (e.g. category ratings/notes already saved), and vice versa. */
+async function upsertReviewFields(
+  pubId: string,
+  person: Person,
+  changes: Partial<Pick<Review, 'rating' | 'comment' | 'categories' | 'categoryNotes'>>
+): Promise<void> {
+  const existing = await db.reviews.get([pubId, person]);
+  const next: Review = {
+    pubId,
+    person,
+    rating: existing?.rating ?? null,
+    comment: existing?.comment ?? null,
+    categories: existing?.categories ?? null,
+    categoryNotes: existing?.categoryNotes ?? null,
+    ...changes,
+    updatedAt: new Date().toISOString(),
+  };
+  await db.reviews.put(next);
+}
+
 export async function upsertReview(pubId: string, person: Person, rating: number | null, comment: string | null): Promise<void> {
-  const review: Review = { pubId, person, rating, comment, updatedAt: new Date().toISOString() };
-  await db.reviews.put(review);
+  await upsertReviewFields(pubId, person, { rating, comment });
+}
+
+export async function setReviewCategoryRating(
+  pubId: string,
+  person: Person,
+  category: RatingCategoryKey,
+  value: number | null
+): Promise<void> {
+  const existing = await db.reviews.get([pubId, person]);
+  const categories: CategoryRatings = { ...(existing?.categories ?? {}) };
+  if (value == null) delete categories[category];
+  else categories[category] = value;
+  await upsertReviewFields(pubId, person, { categories });
+}
+
+export async function setReviewCategoryNote(
+  pubId: string,
+  person: Person,
+  category: RatingCategoryKey,
+  note: string | null
+): Promise<void> {
+  const existing = await db.reviews.get([pubId, person]);
+  const categoryNotes: CategoryNotes = { ...(existing?.categoryNotes ?? {}) };
+  const trimmed = note?.trim();
+  if (trimmed) categoryNotes[category] = trimmed;
+  else delete categoryNotes[category];
+  await upsertReviewFields(pubId, person, { categoryNotes });
+}
+
+async function ensureGuestReview(pubId: string): Promise<GuestReview> {
+  const existing = await db.guestReviews.get(pubId);
+  if (existing) return existing;
+  const fresh: GuestReview = { pubId, guestName: null, categories: {}, categoryNotes: {}, updatedAt: new Date().toISOString() };
+  await db.guestReviews.put(fresh);
+  return fresh;
+}
+
+export async function addGuestReview(pubId: string): Promise<void> {
+  await ensureGuestReview(pubId);
+}
+
+export async function setGuestName(pubId: string, guestName: string | null): Promise<void> {
+  const existing = await ensureGuestReview(pubId);
+  await db.guestReviews.put({ ...existing, guestName: guestName?.trim() || null, updatedAt: new Date().toISOString() });
+}
+
+export async function setGuestCategoryRating(pubId: string, category: RatingCategoryKey, value: number | null): Promise<void> {
+  const existing = await ensureGuestReview(pubId);
+  const categories: CategoryRatings = { ...existing.categories };
+  if (value == null) delete categories[category];
+  else categories[category] = value;
+  await db.guestReviews.put({ ...existing, categories, updatedAt: new Date().toISOString() });
+}
+
+export async function setGuestCategoryNote(pubId: string, category: RatingCategoryKey, note: string | null): Promise<void> {
+  const existing = await ensureGuestReview(pubId);
+  const categoryNotes: CategoryNotes = { ...existing.categoryNotes };
+  const trimmed = note?.trim();
+  if (trimmed) categoryNotes[category] = trimmed;
+  else delete categoryNotes[category];
+  await db.guestReviews.put({ ...existing, categoryNotes, updatedAt: new Date().toISOString() });
+}
+
+/** Removes only the guest review for this pub — never touches Harry's or
+ * Ava's reviews, the pub itself, its visits, or any photos. */
+export async function deleteGuestReview(pubId: string): Promise<void> {
+  await db.guestReviews.delete(pubId);
 }
 
 export interface NewVisitInput {
@@ -232,5 +332,6 @@ export async function deleteCustomPub(pubId: string): Promise<void> {
     db.statuses.delete(pubId),
     db.edits.delete(pubId),
     db.reviews.where('pubId').equals(pubId).delete(),
+    db.guestReviews.delete(pubId),
   ]);
 }

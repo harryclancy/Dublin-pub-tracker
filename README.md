@@ -31,6 +31,34 @@ node scripts/build-pubs.mjs
 Swap in a different/updated `raw-dublin-pubs.geojson` (e.g. a fresh Overpass API export in the same
 `{name, lat, lon}` shape) to expand coverage without touching app code.
 
+## Shared sync (Harry + Ava)
+
+Both phones read and write one shared Supabase database, so a change on either
+appears on the other. The design keeps the existing local-first behaviour:
+
+- **Dexie/IndexedDB stays the source the UI reads from**, so the app is instant
+  and still works with no signal in a pub basement.
+- **`src/sync/`** pushes local changes up and pulls remote ones down (realtime,
+  plus a 30s poll and a sync on focus/reconnect as a safety net). Local writes
+  are captured by Dexie hooks into an `outbox`, so nothing is lost offline.
+- **Conflicts** resolve per row by server timestamp. In practice Harry and Ava
+  edit different rows (their own review for a given pub), so they rarely meet.
+- **Photos** live in a private Supabase Storage bucket; their bytes are fetched
+  lazily and cached locally, so the same photo is never downloaded twice.
+- **Access** is one shared passphrase, entered once per device — no individual
+  accounts. The anon key is public by design; row-level security means it grants
+  nothing without that sign-in.
+
+First-time database setup is a single paste of [`supabase/schema.sql`](supabase/schema.sql)
+into the Supabase SQL editor, then filling in `src/sync/config.ts`.
+
+Run the sync tests (two simulated phones against a mock backend, no network or
+Supabase account needed):
+
+```bash
+npm run test:sync
+```
+
 ## Development
 
 ```bash

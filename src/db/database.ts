@@ -29,6 +29,8 @@ export class PubTrackerDB extends Dexie {
   settings!: Table<AppSettings, string>;
   customPubs!: Table<Pub, string>;
   guestReviews!: Table<GuestReview, string>;
+  outbox!: Table<OutboxEntry, string>;
+  syncMeta!: Table<SyncMetaEntry, string>;
 
   constructor() {
     super('dublin-pub-tracker');
@@ -55,7 +57,29 @@ export class PubTrackerDB extends Dexie {
     this.version(3).stores({
       guestReviews: 'pubId',
     });
+    // v4: cloud sync bookkeeping. `outbox` is a dirty-set of local rows waiting
+    // to be pushed (one entry per row, latest state wins — the pusher reads the
+    // live row rather than a snapshot). `syncMeta` holds the pull cursor and
+    // one-off migration flags. Both are device-local and never synced.
+    this.version(4).stores({
+      outbox: 'key, queuedAt',
+      syncMeta: 'key',
+    });
   }
+}
+
+export interface OutboxEntry {
+  /** `${collection}:${recordId}` — one pending entry per row. */
+  key: string;
+  collection: string;
+  recordId: string;
+  deleted: boolean;
+  queuedAt: string;
+}
+
+export interface SyncMetaEntry {
+  key: string;
+  value: unknown;
 }
 
 export const db = new PubTrackerDB();

@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
-import { Download, Upload, Info, ShieldCheck } from 'lucide-react';
+import { Download, Upload, Info, ShieldCheck, RefreshCw, Cloud, CloudOff, LogOut } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { exportBackup, downloadBackup, parseBackupFile, importBackup, summarizeBackup, type BackupFile } from '../lib/backup';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useToast } from '../components/ui/Toast';
 import { usePubData } from '../context/PubDataContext';
+import { useSync } from '../sync/SyncProvider';
+import { formatDistanceToNow } from 'date-fns';
 
 export function SettingsPage() {
   const [exporting, setExporting] = useState(false);
@@ -13,6 +15,8 @@ export function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
   const { pubs } = usePubData();
+  const { mode, status, syncNow, lock } = useSync();
+  const [confirmLock, setConfirmLock] = useState(false);
 
   async function handleExport() {
     setExporting(true);
@@ -50,13 +54,57 @@ export function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Backup, restore &amp; about" />
+      <PageHeader title="Settings" subtitle="Sync, backup &amp; about" />
       <div className="space-y-6 px-4 pb-10 pt-4 sm:px-6">
+        {mode === 'ready' && (
+          <section className="rounded-card bg-white p-4 shadow-card">
+            <div className="flex items-center gap-2">
+              {status.state === 'offline' ? (
+                <CloudOff size={15} className="text-ink-soft" />
+              ) : (
+                <Cloud size={15} className="text-brand-700" />
+              )}
+              <h2 className="font-display text-sm font-bold text-ink">Shared with Harry &amp; Ava</h2>
+            </div>
+            <p className="mt-1.5 text-xs leading-relaxed text-ink-soft">
+              {status.state === 'offline'
+                ? "You're offline — changes are saved on this phone and will sync automatically when you're back online."
+                : 'Everything you add here appears on the other phone automatically, and vice versa.'}
+            </p>
+            <div className="mt-2 text-[11px] font-medium text-ink-soft">
+              {status.pendingCount > 0
+                ? `${status.pendingCount} change${status.pendingCount === 1 ? '' : 's'} waiting to upload`
+                : status.lastSyncedAt
+                  ? `Last synced ${formatDistanceToNow(new Date(status.lastSyncedAt), { addSuffix: true })}`
+                  : 'Syncing…'}
+            </div>
+            {status.error && <p className="mt-1.5 text-[11px] font-medium text-red-600">{status.error}</p>}
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => {
+                  void syncNow();
+                  toast.show('Syncing…');
+                }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-line bg-white py-2.5 text-xs font-bold text-ink active:scale-95"
+              >
+                <RefreshCw size={13} className={status.state === 'syncing' ? 'animate-spin' : ''} /> Sync now
+              </button>
+              <button
+                onClick={() => setConfirmLock(true)}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2.5 text-xs font-semibold text-ink-soft active:scale-95"
+              >
+                <LogOut size={13} /> Lock
+              </button>
+            </div>
+          </section>
+        )}
+
         <section className="rounded-card bg-white p-4 shadow-card">
           <h2 className="font-display text-sm font-bold text-ink">Backup &amp; Restore</h2>
           <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-            There's no account or login — everything lives on this device. Export a backup regularly (especially before
-            switching phones) so your visits, ratings and pint photos are never lost.
+            {mode === 'ready'
+              ? 'Your data lives in the shared database, but an occasional export is a handy belt-and-braces copy you fully control.'
+              : "There's no account or login — everything lives on this device. Export a backup regularly (especially before switching phones) so your visits, ratings and pint photos are never lost."}
           </p>
           <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
             <button
@@ -106,11 +154,24 @@ export function SettingsPage() {
             <h2 className="font-display text-sm font-bold text-ink">Privacy</h2>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-ink-soft">
-            No sign-up, no server, no tracking. Your reviews and photos stay in this browser's storage unless you export
-            them yourself.
+            {mode === 'ready'
+              ? 'No individual accounts and no tracking — just one shared passphrase between the two of you. Your reviews and photos live in your own private database and nowhere else.'
+              : "No sign-up, no server, no tracking. Your reviews and photos stay in this browser's storage unless you export them yourself."}
           </p>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={confirmLock}
+        title="Lock this phone?"
+        description="You'll need the shared passphrase to get back in on this device. Nothing is deleted — all your data stays safely in the shared database."
+        confirmLabel="Lock"
+        onCancel={() => setConfirmLock(false)}
+        onConfirm={async () => {
+          setConfirmLock(false);
+          await lock();
+        }}
+      />
 
       <ConfirmDialog
         open={!!pendingImport}

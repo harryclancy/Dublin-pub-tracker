@@ -1,4 +1,5 @@
 import { db } from '../db/database';
+import { enqueueEverything } from '../sync/outbox';
 import { blobToDataUrl, dataUrlToBlob } from './photos';
 import type { AppSettings, Drink, DrinkPhoto, GuestReview, Pub, PubCrawl, PubEdit, PubStatus, Review, Visit } from '../types';
 
@@ -152,4 +153,9 @@ export async function importBackup(backup: BackupFile): Promise<void> {
       ]);
     }
   );
+
+  // Bulk clear/put operations bypass Dexie's per-row hooks, so the restored
+  // state is queued explicitly — otherwise an import would stay stuck on this
+  // phone and never reach the shared database.
+  await enqueueEverything();
 }

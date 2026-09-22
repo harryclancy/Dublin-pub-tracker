@@ -2,6 +2,9 @@ import { lazy, Suspense } from 'react';
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { PubDataProvider } from './context/PubDataContext';
 import { ToastProvider } from './components/ui/Toast';
+import { SyncProvider, useSync } from './sync/SyncProvider';
+import { PassphraseGate } from './components/sync/PassphraseGate';
+import { SyncStatusPill } from './components/sync/SyncStatusPill';
 import { AppShell } from './components/layout/AppShell';
 import { HomePage } from './pages/HomePage';
 import { AllPubsPage } from './pages/AllPubsPage';
@@ -27,31 +30,46 @@ function PageFallback() {
   );
 }
 
+function AppRoutes() {
+  const { mode } = useSync();
+
+  // Once sync is configured, the shared data sits behind the passphrase. Before
+  // it's configured the app runs exactly as it always has, purely on-device.
+  if (mode === 'locked') return <PassphraseGate />;
+
+  return (
+    <HashRouter>
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/pubs" element={<AllPubsPage />} />
+            <Route path="/areas/:area" element={<AreaPage />} />
+            <Route path="/visited" element={<VisitedPage />} />
+            <Route path="/want-to-visit" element={<WantToVisitPage />} />
+            <Route path="/favourites" element={<FavouritesPage />} />
+            <Route path="/stats" element={<StatsPage />} />
+            <Route path="/crawls" element={<CrawlsPage />} />
+            <Route path="/crawls/:id" element={<CrawlDetailPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/pub/:id" element={<PubDetailPage />} />
+          </Route>
+        </Routes>
+      </Suspense>
+      <SyncStatusPill />
+    </HashRouter>
+  );
+}
+
 export default function App() {
   return (
-    <PubDataProvider>
-      <ToastProvider>
-        <HashRouter>
-          <Suspense fallback={<PageFallback />}>
-            <Routes>
-              <Route element={<AppShell />}>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/map" element={<MapPage />} />
-                <Route path="/pubs" element={<AllPubsPage />} />
-                <Route path="/areas/:area" element={<AreaPage />} />
-                <Route path="/visited" element={<VisitedPage />} />
-                <Route path="/want-to-visit" element={<WantToVisitPage />} />
-                <Route path="/favourites" element={<FavouritesPage />} />
-                <Route path="/stats" element={<StatsPage />} />
-                <Route path="/crawls" element={<CrawlsPage />} />
-                <Route path="/crawls/:id" element={<CrawlDetailPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/pub/:id" element={<PubDetailPage />} />
-              </Route>
-            </Routes>
-          </Suspense>
-        </HashRouter>
-      </ToastProvider>
-    </PubDataProvider>
+    <SyncProvider>
+      <PubDataProvider>
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
+      </PubDataProvider>
+    </SyncProvider>
   );
 }

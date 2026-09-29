@@ -30,6 +30,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // the Gym app under /gym/ is a separate app with its own service worker
+        globIgnores: ['gym/**'],
+        navigateFallbackDenylist: [/\/gym(\/|$)/],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         runtimeCaching: [
           {
